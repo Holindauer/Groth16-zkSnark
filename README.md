@@ -84,18 +84,33 @@ To transform our R1CS into a QAP, we will define a transformation function for e
 If we consider the below representation of our R1CS, we can define the transformation function $\varphi$ as the lagrange interpolation of each column of $L, R, O$.
 
 
-$$ U = \varphi(L) = [u_1(x), u_2(x),..., u_n(x)] L \in \mathbb{F_p}^{n \times m} $$
-$$ V = \varphi(R) = [v_1(x), v_2(x),..., v_n(x)] V \in \mathbb{F_p}^{n \times m} $$
-$$ W = \varphi(O) = [w_1(x), w_2(x),..., w_n(x)] W \in \mathbb{F_p}^{n \times m} $$
-$$ s = a = (a_1, ... , a_n), a_1 = 1, a{}_{i, i>1} \in \mathbb{F_p} $$
+$$ 
+U = \varphi(L) = [u_1(x), u_2(x),..., u_n(x)] L \in \mathbb{F_p}^{n \times m} 
+$$
+
+$$ 
+V = \varphi(R) = [v_1(x), v_2(x),..., v_n(x)] V \in \mathbb{F_p}^{n \times m} 
+$$
+
+$$ 
+W = \varphi(O) = [w_1(x), w_2(x),..., w_n(x)] W \in \mathbb{F_p}^{n \times m} 
+$$
+
+$$ 
+s = a = (a_1, ... , a_n), a_1 = 1, a{}_{i, i>1} \in \mathbb{F_p} 
+$$
 
 Note that the interpolation of each row of the column vector maps to the dimension of that row - 1. And all arithmatic operations are done in the field mod a prime $\mathbb{F_p}$.
 
 The following is equivalent to the R1CS representation:
 
-$$ (U \cdot s)(V \cdot s) = W \cdot s $$
+$$ 
+(U \cdot s)(V \cdot s) = W \cdot s 
+$$
 
-$$ \sum_{i=0}^m a_iu_i(x) \sum_{i=0}^m a_iv_i(x) = \sum_{i=0}^m a_iw_i(x) $$
+$$ 
+\sum_{i=0}^m a_iu_i(x) \sum_{i=0}^m a_iv_i(x) = \sum_{i=0}^m a_iw_i(x) 
+$$
 
 However, the dot products above will result in a single polynomial when computed, as opposed to very large matrices.
 
@@ -108,9 +123,11 @@ For example, consider the following setup for $U, V$
 $$
 (U \cdot s) = x^2 + x + 1
 $$
+
 $$
 (V \cdot s) = 3x^2 -2x +1
 $$
+
 $$
 (U \cdot s)(V \cdot s) = 3x^4 + x^3 + 2x^2 - x + 1
 $$
@@ -119,11 +136,14 @@ In this situation, $W \cdot s$ will only a degree of 2, breaking the equality on
 
 First, lets consider our R1CS again. We are not trying to change this representation. If we add a term that is the zero vector, the equation will still hold:
 
-$$ (U \cdot s)(V \cdot s) = W \cdot s + 0 $$
+$$ 
+(U \cdot s)(V \cdot s) = W \cdot s + 0 
+$$
 
 The $0$ term is known as a balancing term. Note that while on the R1CS side, this is a zero vector, however because we can interpolate the polynomial in an infinite number of ways, we can make the polynomial match the degree of the lhs.
 
 In our example, because we are interpolating the polynomials over x = {1, 2, 3}, we can construct a polynomial $h(x)t(x)$ where:
+
 $$
 t(x) = (x - 1)(x - 2)(x - 3)
 $$
@@ -133,14 +153,77 @@ $h(x)$ can then be computed via the following algebraic manipulation:
 $$
 (U \cdot s)(V \cdot s) - (W \cdot s) = 0
 $$
+
 $$
 (U \cdot s)(V \cdot s) - (W \cdot s) = h(x)t(x)
 $$
+
 $$
 \frac{(U \cdot s)(V \cdot s) - (W \cdot s)}{t(x)} = h(x)
 $$
 
 It should be noted that $t(x)$ is a public polynomial. This means that in a ZKP, the prover cannot just make up some $h(x)$ term that will make the equation hold. The prover must derive $h(x)$ else the verifier will not be able to verify the proof.
+
+# QAP ZKP
+
+The following lays out the steps for a zero knowledge proof that uses a QAP to prove the validity of a witness to a polynomial constraint. Note that before Groth16 is implemented, the prover could invent values that satisfy the constraint.
+
+### Trusted Setup
+
+The trusted setup computes:
+
+$$
+[xG], [x^2G], [x^3G],...[x^nG]
+$$
+
+Where $G$ is a generator point on an elliptic curve.
+
+### Prover Steps
+
+The prover will compute $ (U \cdot s)$, $(V \cdot s)$, $(W \cdot s)$ and $h(x)$ by multiplying the curve points above by the polynomial coefficients.
+
+For $U$, $V$, $W$:
+
+$$
+[A]= (U \cdot s)(x) =  \sum_{i=0}^n u_i[x^iG]
+$$
+
+$$
+[B]= (V \cdot s)(x) =  \sum_{i=0}^n v_i[x^iG]
+$$
+
+$$
+[C']= (W \cdot s)(x) =  \sum_{i=0}^n w_i[x^iG]
+$$
+
+For $h(x)$:
+
+
+$$
+ht(x) = h(x)t(x)
+$$
+$$
+[HT] = h(x) = \sum_{i=0}^n ht_i[x^iG]
+$$
+
+$[C]$ is computed by:
+
+$$
+[C] = [C'] + [HT]
+$$
+
+### Verifier Steps
+
+The verifier will compute the following:
+
+$$
+
+e([A], [B]) = e([C], G)
+
+$$
+
+Where $e$ is a bilinear pairing mapping e : $G_1 \times G_2 \rightarrow G_T$.
+
 # Sources
 
 https://www.rareskills.io/post/quadratic-arithmetic-program
