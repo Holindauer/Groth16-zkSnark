@@ -100,9 +100,13 @@ $$
 s = a = (a_1, ... , a_n), a_1 = 1, a{}_{i, i>1} \in \mathbb{F_p} 
 $$
 
-Note that the interpolation of each row of the column vector maps to the dimension of that row - 1. And all arithmatic operations are done in the field mod a prime $\mathbb{F_p}$.
+Note that the interpolation of each row of the column vector maps to the dimension of that row - 1. And all arithmatic operations are done in the finite field $\mathbb{F_p}$.
 
-The following is equivalent to the R1CS representation:
+The following is congruent to the R1CS representation:
+
+$$
+Ls \circ Rs = Os
+$$
 
 $$ 
 (U \cdot s)(V \cdot s) = W \cdot s 
@@ -116,7 +120,7 @@ However, the dot products above will result in a single polynomial when computed
 
 ### Balancing the QAP
 
-There is a catch to the above statement. Because we are multiplying $U \cdot s$ and $V \cdot s$, the degree of the resulting polynomial will not match that of $W \cdot s$. The interpolation wrt to the R1CS will still hold, but in order maintain the equality of the polynomial equation. 
+There is a catch to the above statement. Because we are multiplying $U \cdot s$ and $V \cdot s$, the degree of the resulting polynomial will not match that of $W \cdot s$. The interpolation wrt to the R1CS will still hold, but something must be done to maintain the equality of the polynomial equation.
 
 For example, consider the following setup for $U, V$
 
@@ -132,13 +136,13 @@ $$
 (U \cdot s)(V \cdot s) = 3x^4 + x^3 + 2x^2 - x + 1
 $$
 
-In this situation, $W \cdot s$ will only a degree of 2, breaking the equality on the polynomial side of things. We need to introduce another term into the right hand side of the equation.
+In this situation, $W \cdot s$ will only be a degree of 2, breaking the equality on the polynomial side of things. We need to introduce another term into the right hand side of the equation.
 
 First, lets consider our R1CS again. We are not trying to change this representation. If we add a term that is the zero vector, the equation will still hold:
 
 $$ 
-(U \cdot s)(V \cdot s) = W \cdot s + 0 
-$$
+Ls \circ Rs = Os + 0  
+$$  
 
 The $0$ term is known as a balancing term. Note that while on the R1CS side, this is a zero vector, however because we can interpolate the polynomial in an infinite number of ways, we can make the polynomial match the degree of the lhs.
 
@@ -202,6 +206,7 @@ For $h(x)$:
 $$
 ht(x) = h(x)t(x)
 $$
+
 $$
 [HT] = h(x) = \sum_{i=0}^n ht_i[x^iG]
 $$
@@ -216,14 +221,23 @@ $$
 
 The verifier will compute the following:
 
-$$
-
+$$ 
 e([A], [B]) = e([C], G)
-
 $$
 
 Where $e$ is a bilinear pairing mapping e : $G_1 \times G_2 \rightarrow G_T$.
 
 # Sources
 
+
+
 https://www.rareskills.io/post/quadratic-arithmetic-program
+
+https://www.rareskills.io/post/r1cs-to-qap
+
+https://www.rareskills.io/post/encrypted-polynomial-evaluation
+
+https://www.rareskills.io/post/elliptic-curve-qap
+
+https://www.rareskills.io/post/groth16
+
