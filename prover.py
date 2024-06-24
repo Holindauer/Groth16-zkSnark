@@ -2,7 +2,8 @@ import numpy as np
 from py_ecc.bn128 import G1, multiply, add, curve_order, field_modulus, eq, Z1
 import galois
 from functools import reduce
-
+from trusted_setup import TrustedSetup
+ 
 class Prover:
     def __init__(self, L, R, O):
 
@@ -10,7 +11,6 @@ class Prover:
         print("initializing a large field, will take a moment...")
         # self.GF = galois.GF(curve_order) 
         # self.field_modulus = field_modulus
-
         self.GF = galois.GF(79)
         self.field_modulus = 79
 
@@ -19,9 +19,21 @@ class Prover:
 
     def genProof(self, x, y):
 
+        # trusted setup
+        G1_powers, G2_powers = TrustedSetup.setup(degree=4)
+
+        # gen wintess
         witness = self.genWitness(x, y)  
+
+        # convert r1cs to QAP
         U_dot_s, V_dot_s, W_dot_s, h, t = self.R1CS_to_QAP(self.L, self.R, self.O, witness)
 
+        # evaluate polynomials at powers of tau
+        U_eval = self.eval_polys_at_tau(G1_powers, U_dot_s)
+        V_eval = self.eval_polys_at_tau(G1_powers, V_dot_s)
+        W_eval = self.eval_polys_at_tau(G1_powers, W_dot_s)
+
+        
         
     def genWitness(self, x, y):
         # inputs that solve the polynomial constraint
@@ -35,7 +47,6 @@ class Prover:
         return np.array([1, out, x, y, v1, v2, v3])
                 
     def R1CS_to_QAP(self, L, R, O, w):
-        # computes terms of: U_dot_s * V_dot_s = W_dot_s + h(x)t(x)
 
         # convert np arr to galois field arr, handling negatives
         encode_array = lambda arr: self.GF(np.array(arr, dtype=int) % self.field_modulus)
@@ -65,28 +76,37 @@ class Prover:
 
         # true iff the constraint is satisfied
         assert U_dot_s * V_dot_s == W_dot_s + h * t, "division has a remainder"
-
         return U_dot_s, V_dot_s, W_dot_s, h, t
-            
+    
+    def eval_polys_at_tau(self, powers_of_tau, poly):
+
+        def elliptic_dot(ec_pts, coeffs): 
+            # elliptic curve dot product for tau powers with poly coefficients 
+            return reduce(add, (multiply(pt, int(c)) for pt, c in zip(ec_pts, coeffs)), Z1)
+        
+        evaluated = elliptic_dot(powers_of_tau, poly.coeffs[::-1])
+
+
+
 
 
 if __name__ == "__main__":
 
     # R1CS matrices --- Ls * Rs = Os ,[1, out, x, y, v1, v2, v3]
     L = np.array([[0,0,1,0,0,0,0],
-                [0,0,0,0,1,0,0],
-                [0,0,4,0,0,0,0],
-                [0,0,0,1,0,0,0]])
+                  [0,0,0,0,1,0,0],
+                  [0,0,4,0,0,0,0],
+                  [0,0,0,1,0,0,0]])
 
     R = np.array([[0,0,1,0,0,0,0],
-                [0,0,1,0,0,0,0],
-                [0,0,1,0,0,0,0],
-                [0,0,0,1,0,0,0]])
+                  [0,0,1,0,0,0,0],
+                  [0,0,1,0,0,0,0],
+                  [0,0,0,1,0,0,0]])
 
     O = np.array([[0,0,0,0,1,0,0],
-                [0,0,0,0,0,1,0],
-                [0,0,0,0,0,0,1],
-                [40,0,-6,0,0,-1,1]])
+                  [0,0,0,0,0,1,0],
+                  [0,0,0,0,0,0,1],
+                  [40,0,-6,0,0,-1,1]])
     
     prover = Prover(L, R, O)
 
