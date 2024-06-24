@@ -66,11 +66,21 @@ Ls = \begin{bmatrix} 0 \\ 0 \\ 0 \end{bmatrix}
  
  Using lagrange polynomial interpolation, we can encode the vector as:
  
- $$p(x) = -7x^2 + 29x - 18$$
+ $$
+ p(x) = -7x^2 + 29x - 18
+ $$
 
- $$p(1) = 4$$
- $$p(2) = 12$$
- $$p(3) = 6$$
+ $$
+ p(1) = 4
+ $$
+
+ $$
+ p(2) = 12
+ $$
+ 
+ $$
+ p(3) = 6
+ $$
 
 
 The ring homomorphism is from column vector addition and multiplication to polynomial addition and multiplication. 
