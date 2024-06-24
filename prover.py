@@ -20,7 +20,7 @@ class Prover:
     def genProof(self, x, y):
 
         # trusted setup
-        G1_powers, G2_powers = TrustedSetup.setup(degree=4)
+        G1_tau_powers, G2_tau_powers, t_G1 = TrustedSetup.setup(degree=4)
 
         # gen wintess
         witness = self.genWitness(x, y)  
@@ -28,10 +28,13 @@ class Prover:
         # convert r1cs to QAP
         U_dot_s, V_dot_s, W_dot_s, h, t = self.R1CS_to_QAP(self.L, self.R, self.O, witness)
 
-        # evaluate polynomials at powers of tau
-        U_eval = self.eval_polys_at_tau(G1_powers, U_dot_s)
-        V_eval = self.eval_polys_at_tau(G1_powers, V_dot_s)
-        W_eval = self.eval_polys_at_tau(G1_powers, W_dot_s)
+        # evaluate polynomials at encrypted powers of tau
+        U_eval = self.eval_polys_at_encrypted_tau(G1_tau_powers, U_dot_s)
+        V_eval = self.eval_polys_at_encrypted_tau(G2_tau_powers, V_dot_s) # NOTE: G2
+        W_eval = self.eval_polys_at_encrypted_tau(G1_tau_powers, W_dot_s)
+
+        # evaluate h at t(G1_powers)
+        h_eval = self.eval_ht(h, t_G1)
 
         
         
@@ -48,6 +51,23 @@ class Prover:
                 
     def R1CS_to_QAP(self, L, R, O, w):
 
+        # interpolate matrices
+        U_polys, V_polys, W_polys, w_galois = self.poly_interpolate_matrices(L, R, O, w)
+        
+        # U_dot_s, V_dot_s, W_dot_s 
+        U_dot_s, V_dot_s, W_dot_s = [self.dot(poly , w_galois) for poly in [U_polys, V_polys, W_polys]]
+
+        # compute h and t
+        t = self.compute_t(4)
+        h = self.compute_h(U_dot_s, V_dot_s, W_dot_s, t)
+
+        # true iff the constraint is satisfied
+        assert U_dot_s * V_dot_s == W_dot_s + h * t, "division has a remainder"
+        return U_dot_s, V_dot_s, W_dot_s, h, t
+    
+
+    def poly_interpolate_matrices(self, L, R, O, w):
+
         # convert np arr to galois field arr, handling negatives
         encode_array = lambda arr: self.GF(np.array(arr, dtype=int) % self.field_modulus)
         L_galois, R_galois, O_galois, w_galois = [encode_array(arr) for arr in [L, R, O, w]]
@@ -57,34 +77,34 @@ class Prover:
         U_polys = np.apply_along_axis(interpolate, 0, L_galois)
         V_polys = np.apply_along_axis(interpolate, 0, R_galois)
         W_polys = np.apply_along_axis(interpolate, 0, O_galois)
+        return U_polys, V_polys, W_polys, w_galois
 
-        # for dots within QAP formula
-        def dot(polys, witness):
-            mul_ = lambda x, y: x * y
-            sum_ = lambda x, y: x + y
-            return reduce(sum_, map(mul_, polys, witness))
-        
-        # U_dot_s, V_dot_s, W_dot_s 
-        U_dot_s, V_dot_s, W_dot_s = [dot(poly , w_galois) for poly in [U_polys, V_polys, W_polys]]
-
+    def dot(self, polys, witness):
+        # dot product of polynomials with witness
+        mul_ = lambda x, y: x * y
+        sum_ = lambda x, y: x + y
+        return reduce(sum_, map(mul_, polys, witness))
+    
+    def elliptic_dot(self, ec_pts, coeffs): 
+        # elliptic curve dot product for tau powers with poly coefficients 
+        return reduce(add, (multiply(pt, int(c)) for pt, c in zip(ec_pts, coeffs)), Z1)
+    
+    def compute_t(self, degree):  
         # t = (x - 1)(x - 2)(x - 3)(x - 4)
         x_min_i = [galois.Poly([1, self.field_modulus - i], field = self.GF) for i in range(1, 4)]
-        t = reduce(lambda x, y: x * y, x_min_i)
-
-        # h(x) = (W_dot_s - U_dot_s * V_dot_s) / t
-        h = (U_dot_s * V_dot_s - W_dot_s) // t
-
-        # true iff the constraint is satisfied
-        assert U_dot_s * V_dot_s == W_dot_s + h * t, "division has a remainder"
-        return U_dot_s, V_dot_s, W_dot_s, h, t
+        return reduce(lambda x, y: x * y, x_min_i) # NOTE: poly expansion
     
-    def eval_polys_at_tau(self, powers_of_tau, poly):
-
-        def elliptic_dot(ec_pts, coeffs): 
-            # elliptic curve dot product for tau powers with poly coefficients 
-            return reduce(add, (multiply(pt, int(c)) for pt, c in zip(ec_pts, coeffs)), Z1)
-        
-        evaluated = elliptic_dot(powers_of_tau, poly.coeffs[::-1])
+    def compute_h(self, U_dot_s, V_dot_s, W_dot_s, t):  
+        # h(x) = (W_dot_s - U_dot_s * V_dot_s) 
+        return (U_dot_s * V_dot_s - W_dot_s) // t  # NOTE: poly expansion
+    
+    def eval_polys_at_encrypted_tau(self, powers_of_tau, poly):
+        # elliptic curve dot product for tau powers with poly coefficients 
+        return self.elliptic_dot(powers_of_tau, poly.coeffs[::-1])
+    
+    def eval_ht(self, h, t_G1):
+        # evaluate h at G1 powers
+        return self.elliptic_dot(t_G1, h.coeffs[::-1])
 
 
 
