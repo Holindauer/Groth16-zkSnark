@@ -17,6 +17,8 @@ class Prover:
         self.G1_tau_powers = setup[2]
         self.G2_tau_powers = setup[3]
         self.t_G1 = setup[4]
+        self.alpha = setup[5]   
+        self.beta = setup[6]
 
         # flags
         self.ensure_valid_proof = True
@@ -160,7 +162,6 @@ if __name__ == "__main__":
     # trusted setup
     setup = TrustedSetup.setup(degree=4)
 
-    
     prover = Prover(L, R, O, setup)
 
     prover.genProof(3, 2)

@@ -21,6 +21,10 @@ class TrustedSetup:
         # set random tau
         tau = secret_tau(GF, curve_order)
 
+        # generate secret shifts for A and B
+        alpha = secret_alpha(GF, curve_order)  # G1 pt
+        beta = secret_beta(GF, curve_order)    # G2 pt
+
         # generate G1 and G2 powers for polynomial evaluation
         G1_powers, G2_powers = tau_powers(tau, degree)
 
@@ -28,18 +32,31 @@ class TrustedSetup:
         t_G1 = t_eval_G1_powers(t, tau, poly_degree=3)
 
             
-        return GF, curve_order, G1_powers, G2_powers, t_G1
+        return GF, curve_order, G1_powers, G2_powers, t_G1, alpha, beta
 
 
 def secret_tau(GF, order):
+    # computes secret tau term
     return GF(random.randint(1, order))
 
+def secret_alpha(GF, order):
+    # computes secret shift for A
+    random_field_element = GF(random.randint(1, order))
+    return multiply(G1, int(random_field_element))
+
+def secret_beta(GF, order): 
+    # computes secret shift for B
+    random_field_element = GF(random.randint(1, order))
+    return multiply(G2, int(random_field_element))
+
 def tau_powers( tau, poly_degree):
+    # generates G1 and G2 powers of tau for polynomial evaluation
     G1_powers = [multiply(G1, int(tau**i)) for i in range(poly_degree)]
     G2_powers = [multiply(G2, int(tau**i)) for i in range(poly_degree)]
     return G1_powers, G2_powers
 
 def encrypted_dot(ec_pts, coeffs): 
+    # elliptic curve dot product for tau powers with poly coefficients
     return reduce(add, (multiply(pt, int(c)) for pt, c in zip(ec_pts, coeffs)), Z1)
 
 def t_eval_G1_powers(t, tau, poly_degree):
