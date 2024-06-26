@@ -16,31 +16,26 @@ R = np.array([[0,0,1,0,0,0,0],
 O = np.array([[0,0,0,0,1,0,0],
               [0,0,0,0,0,1,0],
               [0,0,0,0,0,0,1],
-              [40,0,-6,0,0,-1,1]])
+              [67,0,0,0,0,-1,-1]])
 
 
 # inputs that solve the polynomial constraint
-x, y = 4, 4
+x = 3
+y = 2
 
-# Original Constraint:
-# out = x^3 - 4x^2 + 6x + y^2 - 40
-
-# Transformed Constraint:
-# v1 = x * x
-# v2 = v1 * x
-# v3 = (4*x) * x
-# -v2 + v3 - 6x + 40 + out = y*y 
+# original polynomial
+out = x*x*x + 4*x*x + y*y
 
 # intermediate variables
-v1 = x * x
-v2 = v1 * x
-v3 = (4*x) * x
-out = v2 - v3 + 6*x + y*y
+v1inter = x*x
+v1 = v1inter*x
+v2 = 4*x*x
 
 # witness vector
-w = np.array([1, out, x, y, v1, v2, v3])
+w = np.array([1, out, x, y, v1inter, v1, v2])
+
 
 # # ensure that the constraint is satisfied when represented as an r1cs
 result = O.dot(w) == np.multiply(L.dot(w),R.dot(w))
 assert result.all(), "result contains an inequality"
-
+print("R1CS constraint satisfied")

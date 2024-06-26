@@ -27,28 +27,31 @@ class Prover:
 
         # convert r1cs to QAP
         U_dot_s, V_dot_s, W_dot_s, h, t = self.R1CS_to_QAP(self.L, self.R, self.O, witness)
+        assert eq(U_dot_s * V_dot_s, W_dot_s + (h * t)), "division has a remainder"
 
         # evaluate polynomials at encrypted powers of tau
         U_eval = self.eval_polys_at_encrypted_tau(G1_tau_powers, U_dot_s)
         V_eval = self.eval_polys_at_encrypted_tau(G2_tau_powers, V_dot_s) # NOTE: G2
         W_eval = self.eval_polys_at_encrypted_tau(G1_tau_powers, W_dot_s)
 
-        # evaluate h at t(G1_powers)
-        h_eval = self.eval_ht(h, t_G1)
 
-        
+        # evaluate h at t(G1_powers)
+        # h_eval = self.eval_ht(h, t_G1)
+
         
     def genWitness(self, x, y):
         # inputs that solve the polynomial constraint
-        x, y = self.GF(4), self.GF(4)
-        v1 = x * x
-        v2 = v1 * x
-        v3 = (4*x) * x
-        out = v2 - v3 + 6*x + y*y
+        x, y = self.GF(x), self.GF(y)
+
+        # intermediate variables
+        v1 = x*x
+        v2 = v1*x
+        v3 = 4*x*x
+        out = v1 + v2 + y*y
 
         # witness vector
         return np.array([1, out, x, y, v1, v2, v3])
-                
+           
     def R1CS_to_QAP(self, L, R, O, w):
 
         # interpolate matrices
@@ -91,7 +94,7 @@ class Prover:
     
     def compute_t(self, degree):  
         # t = (x - 1)(x - 2)(x - 3)(x - 4)
-        x_min_i = [galois.Poly([1, self.field_modulus - i], field = self.GF) for i in range(1, 4)]
+        x_min_i = [galois.Poly([1, self.field_modulus - i], field = self.GF) for i in range(1, 5)]
         return reduce(lambda x, y: x * y, x_min_i) # NOTE: poly expansion
     
     def compute_h(self, U_dot_s, V_dot_s, W_dot_s, t):  
@@ -112,7 +115,7 @@ class Prover:
 
 if __name__ == "__main__":
 
-    # R1CS matrices --- Ls * Rs = Os ,[1, out, x, y, v1, v2, v3]
+    # R1CS matrices --- Ls * Rs = Os ,[1, out, x, y, v1inter, v1, v2]
     L = np.array([[0,0,1,0,0,0,0],
                   [0,0,0,0,1,0,0],
                   [0,0,4,0,0,0,0],
@@ -122,12 +125,13 @@ if __name__ == "__main__":
                   [0,0,1,0,0,0,0],
                   [0,0,1,0,0,0,0],
                   [0,0,0,1,0,0,0]])
-
+ 
     O = np.array([[0,0,0,0,1,0,0],
                   [0,0,0,0,0,1,0],
                   [0,0,0,0,0,0,1],
-                  [40,0,-6,0,0,-1,1]])
+                  [67,0,0,0,0,-1,-1]])
+
     
     prover = Prover(L, R, O)
 
-    prover.genProof(4, 4)
+    prover.genProof(3, 2)

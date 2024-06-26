@@ -4,7 +4,7 @@ import galois
 from functools import reduce
 
 
-# R1CS matrices --- Ls * Rs = Os ,[1, out, x, y, v1, v2, v3]
+# R1CS matrices --- Ls * Rs = Os ,[1, out, x, y, v1inter, v1, v2]
 L = np.array([[0,0,1,0,0,0,0],
               [0,0,0,0,1,0,0],
               [0,0,4,0,0,0,0],
@@ -18,7 +18,7 @@ R = np.array([[0,0,1,0,0,0,0],
 O = np.array([[0,0,0,0,1,0,0],
               [0,0,0,0,0,1,0],
               [0,0,0,0,0,0,1],
-              [40,0,-6,0,0,-1,1]])
+              [67,0,0,0,0,-1,-1]])
 
 print("L: \n", L, "\n")
 print("R: \n", R, "\n")
@@ -28,15 +28,22 @@ print("O: \n", O, "\n")
 field_modulus = 79
 GF = galois.GF(field_modulus)
 
+
 # inputs that solve the polynomial constraint
-x, y = GF(4), GF(4)
-v1 = x * x
-v2 = v1 * x
-v3 = (4*x) * x
-out = v2 - v3 + 6*x + y*y
+x = GF(3)
+y = GF(2)
+
+# original polynomial
+out = x*x*x + 4*x*x + y*y
+
+# intermediate variables
+v1inter = x*x
+v1 = v1inter*x
+v2 = 4*x*x
 
 # witness vector
-w = np.array([1, out, x, y, v1, v2, v3])
+w = np.array([1, out, x, y, v1inter, v1, v2])
+
 
 print("witness: \n", w, "\n")
 
@@ -101,5 +108,10 @@ t = x_min_1 * x_min_2 * x_min_3 * x_min_4
 h = (U_dot_s * V_dot_s - W_dot_s) // t
 
 
+print("t: \n", t, "\n")
+print("h: \n", h, "\n")
+print("h(x) * t(x): \n", h * t, "\n")
+print("U_dot_s * V_dot_s - W_dot_s: \n", U_dot_s * V_dot_s - W_dot_s, "\n")
+
 # this is true iff the constraint is satisfied
-assert U_dot_s * V_dot_s == W_dot_s + h * t, "division has a remainder"
+assert U_dot_s * V_dot_s == W_dot_s + (h * t), "division has a remainder"
