@@ -24,10 +24,11 @@ class Prover:
 
         # gen wintess
         witness = self.genWitness(x, y)  
+        self.verifyR1CS(self.L, self.R, self.O, witness)
 
         # convert r1cs to QAP
         U_dot_s, V_dot_s, W_dot_s, h, t = self.R1CS_to_QAP(self.L, self.R, self.O, witness)
-        assert eq(U_dot_s * V_dot_s, W_dot_s + (h * t)), "division has a remainder"
+        self.verifyQAP(U_dot_s, V_dot_s, W_dot_s, h, t)
 
         # evaluate polynomials at encrypted powers of tau
         U_eval = self.eval_polys_at_encrypted_tau(G1_tau_powers, U_dot_s)
@@ -51,6 +52,11 @@ class Prover:
 
         # witness vector
         return np.array([1, out, x, y, v1, v2, v3])
+    
+    def verifyR1CS(self, L, R, O, w):
+        # ensure r1cs constraint is satisfied by witness
+        result = O.dot(w) == np.multiply(L.dot(w), R.dot(w))
+        assert result.all(), "result contains an inequality"
            
     def R1CS_to_QAP(self, L, R, O, w):
 
@@ -65,10 +71,11 @@ class Prover:
         h = self.compute_h(U_dot_s, V_dot_s, W_dot_s, t)
 
         # true iff the constraint is satisfied
-        assert U_dot_s * V_dot_s == W_dot_s + h * t, "division has a remainder"
         return U_dot_s, V_dot_s, W_dot_s, h, t
     
-
+    def verifyQAP(self, U_dot_s, V_dot_s, W_dot_s, h, t):
+        assert U_dot_s * V_dot_s == W_dot_s + h * t, "division has a remainder"
+    
     def poly_interpolate_matrices(self, L, R, O, w):
 
         # convert np arr to galois field arr, handling negatives
