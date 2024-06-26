@@ -1,8 +1,8 @@
 import random
 import numpy as np
-from py_ecc.bn128 import G1, G2, Z1, add, multiply, curve_order, field_modulus
-import galois
+from py_ecc.bn128 import G1, G2, Z1, add, multiply, curve_order
 from functools import reduce
+import galois
 
 class TrustedSetup: 
 
@@ -10,17 +10,16 @@ class TrustedSetup:
 
         # galois field w/ matching modulus to bn128 
         print("initializing a large field, will take a moment...")
-        GF = galois.GF(field_modulus) 
-        # field_modulus = field_modulus
+        GF = galois.GF(curve_order) 
         # GF = galois.GF(79)
-        # field_modulus = 79
+        # curve_order = 79
     
         # create t = (x - 1)(x - 2)(x - 3)(x - 4)
-        x_min_i = [galois.Poly([1, field_modulus - i], field = GF) for i in range(1, 5)]
+        x_min_i = [galois.Poly([1, curve_order - i], field = GF) for i in range(1, 5)]
         t = reduce(lambda x, y: x * y, x_min_i)
 
         # set random tau
-        tau = secret_tau(GF, field_modulus)
+        tau = secret_tau(GF, curve_order)
 
         # generate G1 and G2 powers for polynomial evaluation
         G1_powers, G2_powers = tau_powers(tau, degree)
@@ -29,11 +28,11 @@ class TrustedSetup:
         t_G1 = t_eval_G1_powers(t, tau, poly_degree=3)
 
             
-        return G1_powers, G2_powers, t_G1
+        return GF, curve_order, G1_powers, G2_powers, t_G1
 
 
-def secret_tau(GF, field_mod):
-    return GF(random.randint(1, field_mod))
+def secret_tau(GF, order):
+    return GF(random.randint(1, order))
 
 def tau_powers( tau, poly_degree):
     G1_powers = [multiply(G1, int(tau**i)) for i in range(poly_degree)]

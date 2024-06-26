@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.interpolate import lagrange
-from py_ecc.bn128 import G1, G2, multiply, add, curve_order, field_modulus, eq, Z1, pairing
+from py_ecc.bn128 import curve_order
 import galois
 from functools import reduce
 
@@ -26,8 +26,8 @@ print("R: \n", R, "\n")
 print("O: \n", O, "\n")
 
 # galois field w/ modulus 79
-# field_modulus = 79
-GF = galois.GF(field_modulus)
+# curve_order = 79
+GF = galois.GF(curve_order)
 
 
 # inputs that solve the polynomial constraint
@@ -50,7 +50,7 @@ print("witness: \n", w, "\n")
 
 def encode_array(arr: np.array):
     # convert np arr to galois field arr, handling negatives
-    return GF(np.array(arr, dtype=int) % field_modulus)
+    return GF(np.array(arr, dtype=int) % curve_order)
  
 L_galois = encode_array(L)
 R_galois = encode_array(R)
@@ -98,10 +98,10 @@ W_dot_s = dot_polynomials_with_witness(W_polys, w_galois)
 
 
 # t = (x - 1)(x - 2)(x - 3)(x - 4)
-x_min_1 = galois.Poly([1, field_modulus-1], field = GF)
-x_min_2 = galois.Poly([1, field_modulus-2], field = GF)
-x_min_3 = galois.Poly([1, field_modulus-3], field = GF)
-x_min_4 = galois.Poly([1, field_modulus-4], field = GF)
+x_min_1 = galois.Poly([1, curve_order-1], field = GF)
+x_min_2 = galois.Poly([1, curve_order-2], field = GF)
+x_min_3 = galois.Poly([1, curve_order-3], field = GF)
+x_min_4 = galois.Poly([1, curve_order-4], field = GF)
 
 t = x_min_1 * x_min_2 * x_min_3 * x_min_4
 
