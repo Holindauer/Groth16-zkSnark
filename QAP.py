@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.interpolate import lagrange
+from py_ecc.bn128 import G1, G2, multiply, add, curve_order, field_modulus, eq, Z1, pairing
 import galois
 from functools import reduce
 
@@ -25,7 +26,7 @@ print("R: \n", R, "\n")
 print("O: \n", O, "\n")
 
 # galois field w/ modulus 79
-field_modulus = 79
+# field_modulus = 79
 GF = galois.GF(field_modulus)
 
 
@@ -97,10 +98,10 @@ W_dot_s = dot_polynomials_with_witness(W_polys, w_galois)
 
 
 # t = (x - 1)(x - 2)(x - 3)(x - 4)
-x_min_1 = galois.Poly([1, 78], field = GF)
-x_min_2 = galois.Poly([1, 77], field = GF)
-x_min_3 = galois.Poly([1, 76], field = GF)
-x_min_4 = galois.Poly([1, 75], field = GF)
+x_min_1 = galois.Poly([1, field_modulus-1], field = GF)
+x_min_2 = galois.Poly([1, field_modulus-2], field = GF)
+x_min_3 = galois.Poly([1, field_modulus-3], field = GF)
+x_min_4 = galois.Poly([1, field_modulus-4], field = GF)
 
 t = x_min_1 * x_min_2 * x_min_3 * x_min_4
 

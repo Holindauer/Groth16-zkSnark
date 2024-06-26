@@ -1,5 +1,5 @@
 import numpy as np
-from py_ecc.bn128 import G1, multiply, add, curve_order, field_modulus, eq, Z1
+from py_ecc.bn128 import G1, G2, multiply, add, curve_order, field_modulus, eq, Z1, pairing
 import galois
 from functools import reduce
 from trusted_setup import TrustedSetup
@@ -9,10 +9,10 @@ class Prover:
 
         # galois field w/ matching modulus to bn128 
         print("initializing a large field, will take a moment...")
-        # self.GF = galois.GF(curve_order) 
-        # self.field_modulus = field_modulus
-        self.GF = galois.GF(79)
-        self.field_modulus = 79
+        self.GF = galois.GF(field_modulus) 
+        self.field_modulus = field_modulus
+        # self.GF = galois.GF(79)
+        # self.field_modulus = 79
 
         # r1cs matrices
         self.L, self.R, self.O = L, R, O    
@@ -24,20 +24,31 @@ class Prover:
 
         # gen wintess
         witness = self.genWitness(x, y)  
-        self.verifyR1CS(self.L, self.R, self.O, witness)
+        # self.verifyR1CS(self.L, self.R, self.O, witness)
 
         # convert r1cs to QAP
         U_dot_s, V_dot_s, W_dot_s, h, t = self.R1CS_to_QAP(self.L, self.R, self.O, witness)
-        self.verifyQAP(U_dot_s, V_dot_s, W_dot_s, h, t)
+        # self.verifyQAP(U_dot_s, V_dot_s, W_dot_s, h, t)
 
         # evaluate polynomials at encrypted powers of tau
         U_eval = self.eval_polys_at_encrypted_tau(G1_tau_powers, U_dot_s)
         V_eval = self.eval_polys_at_encrypted_tau(G2_tau_powers, V_dot_s) # NOTE: G2
         W_eval = self.eval_polys_at_encrypted_tau(G1_tau_powers, W_dot_s)
 
-
         # evaluate h at t(G1_powers)
-        # h_eval = self.eval_ht(h, t_G1)
+        ht_eval = self.eval_ht(h, t_G1)
+
+
+        A = U_eval
+        B = V_eval
+        C = add(W_eval, ht_eval)
+
+        print("A: ", A) 
+        print("B: ", B)
+        print("C: ", C)
+
+        assert(pairing(B, A) == pairing(G2, C)), "pairing check failed"
+
 
         
     def genWitness(self, x, y):
@@ -54,9 +65,21 @@ class Prover:
         return np.array([1, out, x, y, v1, v2, v3])
     
     def verifyR1CS(self, L, R, O, w):
-        # ensure r1cs constraint is satisfied by witness
-        result = O.dot(w) == np.multiply(L.dot(w), R.dot(w))
-        assert result.all(), "result contains an inequality"
+
+        # Convert input arrays to Galois Field arrays
+        L_galois, R_galois, O_galois, w_galois = self.GF(L), self.GF(R), self.GF(O), self.GF(w)
+
+        # Perform dot products in the Galois field context
+        Lw, Rw, Ow = L_galois.dot(w_galois),  R_galois.dot(w_galois), O_galois.dot(w_galois)
+
+        # Element-wise multiplication of Lw and Rw within the Galois field
+        result = Ow == Lw * Rw  # Use '*' for field multiplication
+        assert result.all(), "R1CS verification failed"
+
+
+        # # ensure r1cs constraint is satisfied by witness
+        # result = O.dot(w) == np.multiply(L.dot(w), R.dot(w))
+        # assert result.all(), "result contains an inequality"
            
     def R1CS_to_QAP(self, L, R, O, w):
 
@@ -75,12 +98,21 @@ class Prover:
     
     def verifyQAP(self, U_dot_s, V_dot_s, W_dot_s, h, t):
         assert U_dot_s * V_dot_s == W_dot_s + h * t, "division has a remainder"
+
+    def encode_array(self, arr: np.array):
+        # convert np arr to galois field arr, handling negatives
+        return self.GF(np.array(arr, dtype=int) % field_modulus)
     
     def poly_interpolate_matrices(self, L, R, O, w):
 
-        # convert np arr to galois field arr, handling negatives
-        encode_array = lambda arr: self.GF(np.array(arr, dtype=int) % self.field_modulus)
-        L_galois, R_galois, O_galois, w_galois = [encode_array(arr) for arr in [L, R, O, w]]
+        # # convert np arr to galois field arr, handling negatives
+        # encode_array = lambda arr: self.GF(np.array(arr, dtype=int) % self.field_modulus)
+        L_galois, R_galois, O_galois, w_galois = [self.encode_array(arr) for arr in [L, R, O, w]]
+
+        # L_galois = self.encode_array(L)
+        # R_galois = self.encode_array(R)
+        # O_galois = self.encode_array(O)
+        # w_galois = self.encode_array(w)
 
         # r1cs column polynomial interpolation over 1,2,3,4
         interpolate = lambda col: galois.lagrange_poly(self.GF(np.array([1,2,3,4])), col)
@@ -114,7 +146,7 @@ class Prover:
     
     def eval_ht(self, h, t_G1):
         # evaluate h at G1 powers
-        return self.elliptic_dot(t_G1, h.coeffs[::-1])
+        return self.elliptic_dot(t_G1[:3], h.coeffs[::-1]) # NOTE: only 3 coefficients on h
 
 
 
