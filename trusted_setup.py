@@ -6,7 +6,6 @@ import galois
 from QAP import QAP
 
 class TrustedSetup: 
-
     def __init__(self, U_poly, V_poly, W_poly, t, GF, curve_order): # ! currently passing GF in to reduce dev time, but it should be generated here
 
         # unpack QAP
@@ -19,7 +18,6 @@ class TrustedSetup:
         # GF = galois.GF(curve_order)
         # self.curve_order = curve_order 
 
-
     def setup(self, degree): 
 
         # generate secret parameters
@@ -27,7 +25,7 @@ class TrustedSetup:
 
         # generate secret shifts for A and B
         alpha_G1 = self.A_secret_shift_G1(alpha) # G1 pt
-        beta_G2 = self.B_secret_shift_G2(beta)   # G2 pt
+        beta_G1, beta_G2 = self.B_secret_shift_G2(beta)   # G2 pt
 
         # powers of tau for A and B
         A_powers_of_tau_G1 = self.compute_A_powers_of_tau(tau, degree)
@@ -41,26 +39,28 @@ class TrustedSetup:
         ht_powers_of_tau_G1 = self.compute_ht_powers_of_tau(self.t, tau, delta, degree)
 
         # secret delta and upsilon
-        delta_G2 = self.secret_delta(delta)
+        delta_G1, delta_G2 = self.secret_delta(delta)
         upsilon_G2 = self.secret_upsilon(upsilon)
 
+        # pre-evaluate t at powers of tau
+        t_G1 = self.t_eval_G1_powers(self.t, tau, degree)
 
-        setup = {
+        return {
             "GF": self.GF,
             "curve_order": self.curve_order,
             "alpha_G1": alpha_G1,
+            "beta_G1": beta_G1,
             "beta_G2": beta_G2,
             "A_powers_of_tau_G1": A_powers_of_tau_G1,
             "B_powers_of_tau_G2": B_powers_of_tau_G2,
             "public_powers_of_tau_G1": public_powers_of_tau_G1,
             "private_powers_of_tau_G1": private_powers_of_tau_G1,
             "ht_powers_of_tau_G1": ht_powers_of_tau_G1,
+            "delta_G1": delta_G1,   
             "delta_G2": delta_G2,
-            "upsilon_G2": upsilon_G2
+            "upsilon_G2": upsilon_G2,
+            "t_G1" : t_G1
         }
-
-        return setup
-
 
     def random_field_element(self):
         return self.GF(random.randint(1, self.curve_order))
@@ -69,7 +69,7 @@ class TrustedSetup:
         return multiply(G1, int(alpha)) # secret G1 shift for A
 
     def B_secret_shift_G2(self, beta): 
-        return multiply(G2, int(beta)) # secret G2 shift for B
+        return multiply(G1, int(beta)), multiply(G2, int(beta)) # secret G1 and G2 shift for B
 
     def compute_A_powers_of_tau(self, tau, poly_degree):
         return [multiply(G1, int(tau**i)) for i in range(poly_degree)] # NOTE: G1
@@ -80,7 +80,7 @@ class TrustedSetup:
     def compute_C_public_powers_of_tau(self, tau, alpha, beta, upsilon, poly_degree):
         constant = lambda u, v, w, x: ((beta * u(x)) + (alpha * v(x)) + w(x)) * (upsilon**-1)
         u, v, w = self.U, self.V, self.W
-        return [ multiply( G1, int(constant(u[i], v[i], w[i], (tau**i)))) for i in range(poly_degree)] # NOTE: G1
+        return [multiply( G1, int(constant(u[i], v[i], w[i], (tau**i)))) for i in range(poly_degree)] # NOTE: G1
     
     def compute_C_private_powers_of_tau(self, tau, alpha, beta, delta, poly_degree):
         constant = lambda u, v, w, x: ((beta * u(x)) + (alpha * v(x)) + w(x)) * (delta**-1)
@@ -95,7 +95,12 @@ class TrustedSetup:
         return multiply(G2, int(upsilon))
     
     def secret_delta(self, delta):
-        return multiply(G2, int(delta))
+        return multiply(G1, int(delta)), multiply(G2, int(delta))
+    
+    def t_eval_G1_powers(self, t, tau, poly_degree):
+        # encrypt pre evaluated t at powers of tau
+        return [multiply(G1, int(t(tau) * (tau**i))) for i in range(poly_degree)]
+        
     
 
 if __name__ == "__main__":

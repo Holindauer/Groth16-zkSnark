@@ -5,6 +5,7 @@ from functools import reduce
 from trusted_setup import TrustedSetup
 from QAP import QAP
 from typing import Dict
+import random
  
 class Prover:
     def __init__(self, U_poly, V_poly, W_poly, setup: Dict):
@@ -18,7 +19,9 @@ class Prover:
 
         # unpack secret parameters from setup
         self.alpha_G1 = setup["alpha_G1"]
+        self.beta_G1 = setup["beta_G1"]
         self.beta_G2 = setup["beta_G2"]
+        self.delta_G1 = setup["delta_G1"]
         self.delta_G2 = setup["delta_G2"]
         self.upsilon_G2 = setup["upsilon_G2"]
         self.A_powers_of_tau_G1 = setup["A_powers_of_tau_G1"]
@@ -26,6 +29,9 @@ class Prover:
         self.public_powers_of_tau_G1 = setup["public_powers_of_tau_G1"]
         self.private_powers_of_tau_G1 = setup["private_powers_of_tau_G1"]
         self.ht_powers_of_tau_G1 = setup["ht_powers_of_tau_G1"]
+
+        # pre-evaluate t at powers of tau
+        self.t_G1 = setup["t_G1"]
 
         # flags
         self.ensure_valid_proof = True
@@ -42,23 +48,30 @@ class Prover:
         t = self.compute_t(degree=4)
         h = self.compute_h(U_dot_s, V_dot_s, W_dot_s, t)
         
-    
         if self.ensure_valid_proof:
             self.verifyQAP(U_dot_s, V_dot_s, W_dot_s, h, t)
 
-        # ! NOTE below needs to be modified to support the new trusted setup
-        # # evaluate polynomials at encrypted powers of tau
-        # U_eval = self.eval_polys_at_encrypted_tau(self.G1_tau_powers, U_dot_s)
-        # V_eval = self.eval_polys_at_encrypted_tau(self.G2_tau_powers, V_dot_s) # NOTE: G2
-        # W_eval = self.eval_polys_at_encrypted_tau(self.G1_tau_powers, W_dot_s)
+        # generate r and s 
+        r, s = [self.random_field_element() for _ in range(2)]
 
-        # # evaluate h at t(G1_powers)
-        # ht_eval = self.eval_ht(h, self.t_G1)
+        # compute h(tau)t(tau)
+        ht_G1 = self.eval_ht(h)
 
         # # compute A, B, C
-        # A, B, C = U_eval, V_eval, add(W_eval, ht_eval)
-        # if self.ensure_valid_proof:
-        #     self.verify_pairing(A, B, C)
+        A_G1 = self.compute_A_G1(U_dot_s, r)
+        B_G2 = self.compute_B_G2(V_dot_s, s)
+        B_G1 = self.compute_B_G1(V_dot_s, s)
+        
+        C_G1 = self.compute_C_G1(witness, A_G1, B_G1, ht_G1, s, r)
+
+
+        A, B, C = A_G1, B_G2, C_G1
+
+        if self.verbose:
+            print("Proof generated successfully!")
+            print("A: ", A)
+            print("B: ", B)
+            print("C: ", C)
 
     def genWitness(self, x, y):
         # inputs that solve the polynomial constraint
@@ -92,23 +105,49 @@ class Prover:
     def verifyQAP(self, U_dot_s, V_dot_s, W_dot_s, h, t):
         assert U_dot_s * V_dot_s == W_dot_s + h * t, "division has a remainder"
     
+    def random_field_element(self):
+        return self.GF(random.randint(1, self.curve_order))
+    
     def elliptic_dot(self, ec_pts, coeffs): 
         # elliptic curve dot product for tau powers with poly coefficients 
         return reduce(add, (multiply(pt, int(c)) for pt, c in zip(ec_pts, coeffs)), Z1)
     
-    def eval_polys_at_encrypted_tau(self, powers_of_tau, poly):
-        if self.verbose: print("evaluating polynomials at encrypted tau...")
-        # elliptic curve dot product for tau powers with poly coefficients 
-        return self.elliptic_dot(powers_of_tau, poly.coeffs[::-1])
-    
-    def eval_ht(self, h, t_G1):
-        if self.verbose: print("evaluating h at t(G1 powers)")
+    def eval_ht(self, h):
         # evaluate h at G1 powers
-        return self.elliptic_dot(t_G1[:3], h.coeffs[::-1]) # NOTE: only 3 coefficients on h
-    
-    def verify_pairing(self, A, B, C):
-        assert(pairing(B, A) == pairing(G2, C)), "pairing check failed"
+        return self.elliptic_dot(self.ht_powers_of_tau_G1[:3], h.coeffs[::-1]) # NOTE: only 3 coefficients on h
 
+    def compute_A_G1(self, U_dot_s, r):
+        # A = alpha_G1 + U_dot_s(tau) + (r * delta_G1)
+        secret_shift = self.alpha_G1
+        U_eval = self.elliptic_dot(self.A_powers_of_tau_G1, U_dot_s.coeffs[::-1])
+        r_mul_d = multiply(self.delta_G1, int(r))
+        return (add(secret_shift, add(U_eval, r_mul_d)))
+    
+    def compute_B_G2(self, V_dot_s, s):
+        # B = beta_G2 + V_eval + (s * delta_G2)
+        secret_shift = self.beta_G2
+        V_eval = self.elliptic_dot(self.B_powers_of_tau_G2, V_dot_s.coeffs[::-1])
+        s_mul_d = multiply(self.delta_G2, int(s))
+        return (add(secret_shift, add(V_eval, s_mul_d)))
+    
+    def compute_B_G1(self, V_dot_s, s):
+        # B = beta_G1 + V_eval + (s * delta_G1)
+        secret_shift = self.beta_G1
+        V_eval = self.elliptic_dot(self.A_powers_of_tau_G1, V_dot_s.coeffs[::-1])
+        s_mul_d = multiply(self.delta_G1, int(s))
+        return (add(secret_shift, add(V_eval, s_mul_d)))
+
+    def compute_C_G1(self, witness, A_G1, B_G1, ht, s, r):
+        # NOTE: C computed over private inputs
+
+        term_1 = self.elliptic_dot(self.private_powers_of_tau_G1, witness)
+        sA_G1 = multiply(A_G1, int(s))
+        rB_G1 = multiply(B_G1, int(r))
+        rsDelta_G1 = multiply(self.delta_G1, int((-r)*s)) # ! this is intended to be subtraction 
+
+        C = add(add(add(add(term_1, ht), sA_G1), rB_G1), rsDelta_G1)
+
+        return C
 
 if __name__ == "__main__":
 
