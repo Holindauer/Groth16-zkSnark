@@ -26,12 +26,11 @@ class Prover:
         self.gamma_G2 = setup["gamma_G2"]
         self.A_powers_of_tau_G1 = setup["A_powers_of_tau_G1"]
         self.B_powers_of_tau_G2 = setup["B_powers_of_tau_G2"]   
-        self.pub_powers_of_tau_G1 = setup["pub_powers_of_tau_G1"]
         self.priv_powers_of_tau_G1 = setup["priv_powers_of_tau_G1"]
         self.ht_powers_of_tau_G1 = setup["ht_powers_of_tau_G1"]
 
         # flags
-        self.ensure_valid_proof = True
+        self.ensure_valid_proof = False
         self.verbose = True
 
     def genProof(self, x, y):
@@ -39,17 +38,11 @@ class Prover:
         # generate witness vector
         witness = self.genWitness(x, y)
 
-        print("witness vector: ", witness)
-
         # split witness into public/private input at idx l [pub, pub, priv, priv, ...]
         l  = 1
         private_input = witness[l+1:]
         public_input = witness[:l+1]
 
-        print("public input: ", public_input)
-        print("private input: ", private_input)
-
-        
         # dot QAP matrices coefficients w/ solution vector 
         U_dot_s, V_dot_s, W_dot_s = [self.dot(poly , witness) for poly in [self.U, self.V, self.W]]
 
