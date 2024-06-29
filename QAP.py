@@ -6,8 +6,9 @@ from functools import reduce
 
 class QAP:
     """
-    The QAP class modifies the R1CS matrices (L, R, O) into a Quadratic Arithmetic Program
-    format. This is done via lagrange interpolation of the columns of the R1CS matrices.
+    The QAP class modifies the R1CS matrices (L, R, O) for 40 = x^3 - 4x^2 + 6x + y^2 into 
+    a Quadratic Arithmetic Program for format. This is done via lagrange interpolation of 
+    the columns of the R1CS matrices.
     """
 
     def __init__(self):
@@ -30,9 +31,7 @@ class QAP:
         
         # galois field w/ matching modulus to bn128 
         print("initializing a large field, will take a moment...")
-        self.GF = galois.GF(curve_order) 
-        self.curve_order = curve_order
-        # self.GF, self.curve_order = galois.GF(79), 79
+        self.GF, self.curve_order = galois.GF(curve_order), curve_order
         
     def R1CS_to_QAP(self):
         # interpolate matrices and compute t
@@ -41,10 +40,8 @@ class QAP:
         return U_poly, V_poly, W_poly, t
     
     def poly_interpolate_matrices(self):
-
         # convert np arr to galois field arr, handling negatives
         L_galois, R_galois, O_galois = [self.encode_array(arr) for arr in [self.L, self.R, self.O]]
-
         # r1cs column polynomial interpolation over 1,2,3,4
         interpolate = lambda col: galois.lagrange_poly(self.GF(np.array([1,2,3,4])), col)
         U_poly = np.apply_along_axis(interpolate, 0, L_galois)

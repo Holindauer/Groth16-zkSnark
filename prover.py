@@ -88,16 +88,6 @@ class Prover:
         proof = [A_G1, B_G2, C_G1]
         self.printProof(proof, public_input)
 
-        if self.ensure_valid_proof:
-            
-            a = pairing(B_G2, neg(A_G1))
-            b = pairing(self.beta_G2, self.alpha_G1)
-            c = pairing(self.gamma_G2, self.elliptic_dot(self.pub_powers_of_tau_G1, public_input))
-            d = pairing(self.delta_G2, C_G1)
-
-            result = final_exponentiate(a * b * c * d) == FQ12.one()
-            print("Proof verification: ", result)
-
         return proof, public_input
 
     def genWitness(self, x, y):
@@ -143,24 +133,3 @@ class Prover:
             print("\nB: ", proof[1])
             print("\nC: ", proof[2])
             print("\nPublic Claim", public_input)
-
-
-if __name__ == "__main__":
-
-    qap = QAP()
-
-    # convert R1CS to QAP
-    U_poly, V_poly, W_poly, t = qap.R1CS_to_QAP()
-
-    # get galois field 
-    GF = qap.GF
-    curve_order = qap.curve_order
-
-    # trusted setup
-    ts = TrustedSetup(U_poly, V_poly, W_poly, t, GF, curve_order)
-    setup = ts.setup(degree=4)
-    
-
-    prover = Prover(U_poly, V_poly, W_poly, setup)
-
-    prover.genProof(3, 2)

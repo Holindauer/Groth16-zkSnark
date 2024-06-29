@@ -1,6 +1,6 @@
 import numpy as np
 
-# polynomial constraint: out = x^3 - 4x^2 + 6x + y^2 - 40
+# polynomial constraint: 40 = x^3 - 4x^2 + 6x + y^2 
 
 # R1CS matrices --- Ls * Rs = Os ,[1, out, x, y, v1, v2, v3]
 L = np.array([[0,0,1,0,0,0,0],
