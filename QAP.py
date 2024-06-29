@@ -1,14 +1,13 @@
 import numpy as np
 import galois
-# from py_ecc.bn128 import curve_order
+from py_ecc.bn128 import curve_order
 from functools import reduce
 
 
 class QAP:
     """
-    The QAP class modifies the R1CS matrices for 67 = x^3 + 4x^2 + y^2
-    into a Quadratic Arithmetic Program (QAP) format. This is done via
-    lagrange interpolation of the columns of the R1CS matrices.
+    The QAP class modifies the R1CS matrices (L, R, O) into a Quadratic Arithmetic Program
+    format. This is done via lagrange interpolation of the columns of the R1CS matrices.
     """
 
     def __init__(self):
@@ -31,9 +30,9 @@ class QAP:
         
         # galois field w/ matching modulus to bn128 
         print("initializing a large field, will take a moment...")
-        # self.GF = galois.GF(curve_order) 
-        # self.curve_order = curve_order
-        self.GF, self.curve_order = galois.GF(79), 79
+        self.GF = galois.GF(curve_order) 
+        self.curve_order = curve_order
+        # self.GF, self.curve_order = galois.GF(79), 79
         
     def R1CS_to_QAP(self):
         # interpolate matrices and compute t

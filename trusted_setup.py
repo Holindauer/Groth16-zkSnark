@@ -1,49 +1,45 @@
 import random
 import numpy as np
-from py_ecc.bn128 import G1, G2, Z1, add, multiply#, curve_order
+from py_ecc.bn128 import G1, G2, Z1, add, multiply
 from functools import reduce
 import galois
 from QAP import QAP
 
 class TrustedSetup: 
-    def __init__(self, U_poly, V_poly, W_poly, t, GF, curve_order): # ! currently passing GF in to reduce dev time, but it should be generated here
-
-        # unpack QAP
+    def __init__(self, U_poly, V_poly, W_poly, t, GF, curve_order): 
+        # QAP
         self.U, self.V, self.W, self.t = U_poly, V_poly, W_poly, t
-
         # galois field w/ matching modulus to bn128
-        self.GF = GF
-        self.curve_order = curve_order
-        # print("initializing a large field, will take a moment...")
-        # GF = galois.GF(curve_order)
-        # self.curve_order = curve_order 
+        self.GF, self.curve_order  = GF, curve_order
 
     def setup(self, degree): 
 
+        # public/private input split point for witness [pub, pub, priv, priv, ...]
+        l = 1
+
         # generate secret parameters
-        tau, alpha, beta, delta, upsilon = [self.random_field_element() for _ in range(5)]
+        tau, alpha, beta, delta, gamma = [self.random_field_element() for _ in range(5)]
 
-        # generate secret shifts for A and B
-        alpha_G1 = self.A_secret_shift_G1(alpha) # G1 pt
-        beta_G1, beta_G2 = self.B_secret_shift_G2(beta)   # G2 pt
+        # secret shifts for A and B
+        alpha_G1 = multiply(G1, int(alpha))
+        beta_G2 = multiply(G2, int(beta))
 
-        # powers of tau for A and B
-        A_powers_of_tau_G1 = self.compute_A_powers_of_tau(tau, degree)
-        B_powers_of_tau_G2 = self.compute_B_powers_of_tau(tau, degree)
+        # powers of tay for A and B
+        A_powers_of_tau_G1 = self.compute_powers_of_tau_G1(tau, degree)
+        B_powers_of_tau_G2 = self.compute_powers_of_tau_G2(tau, degree)
+        
+        # powers of tau for h(tau)t(tau) in C
+        ht_powers_of_tau_G1 = self.compute_powers_of_tau_ht(self.t, tau, delta, degree)
 
         # powers of tau for public and private inputs in C
-        public_powers_of_tau_G1 = self.compute_C_public_powers_of_tau(tau, alpha, beta, upsilon, degree)
-        private_powers_of_tau_G1 = self.compute_C_private_powers_of_tau(tau, alpha, beta, delta, degree)
+        out = self.compute_pub_and_priv_powers_of_tau(tau, alpha, beta, delta, gamma, l)
+        pub_powers_of_tau_G1, priv_powers_of_tau_G1 = out
 
-        # powers of tau for h(tau)t(tau) in C
-        ht_powers_of_tau_G1 = self.compute_ht_powers_of_tau(self.t, tau, delta, degree)
-
-        # secret delta and upsilon
-        delta_G1, delta_G2 = self.secret_delta(delta)
-        upsilon_G2 = self.secret_upsilon(upsilon)
-
-        # pre-evaluate t at powers of tau
-        t_G1 = self.t_eval_G1_powers(self.t, tau, degree)
+        # additional secret parameters
+        beta_G1 = multiply(G1, int(beta))
+        delta_G1 = multiply(G1, int(delta))
+        gamma_G2 = multiply(G2, int(gamma))
+        delta_G2 = multiply(G2, int(delta))
 
         return {
             "GF": self.GF,
@@ -53,55 +49,56 @@ class TrustedSetup:
             "beta_G2": beta_G2,
             "A_powers_of_tau_G1": A_powers_of_tau_G1,
             "B_powers_of_tau_G2": B_powers_of_tau_G2,
-            "public_powers_of_tau_G1": public_powers_of_tau_G1,
-            "private_powers_of_tau_G1": private_powers_of_tau_G1,
+            "priv_powers_of_tau_G1": priv_powers_of_tau_G1,
+            "pub_powers_of_tau_G1": pub_powers_of_tau_G1,
             "ht_powers_of_tau_G1": ht_powers_of_tau_G1,
             "delta_G1": delta_G1,   
             "delta_G2": delta_G2,
-            "upsilon_G2": upsilon_G2,
-            "t_G1" : t_G1
+            "gamma_G2": gamma_G2,
         }
 
     def random_field_element(self):
         return self.GF(random.randint(1, self.curve_order))
 
-    def A_secret_shift_G1(self, alpha):
-        return multiply(G1, int(alpha)) # secret G1 shift for A
-
-    def B_secret_shift_G2(self, beta): 
-        return multiply(G1, int(beta)), multiply(G2, int(beta)) # secret G1 and G2 shift for B
-
-    def compute_A_powers_of_tau(self, tau, poly_degree):
+    def compute_powers_of_tau_G1(self, tau, poly_degree):
         return [multiply(G1, int(tau**i)) for i in range(poly_degree)] # NOTE: G1
     
-    def compute_B_powers_of_tau(self, tau, poly_degree):
+    def compute_powers_of_tau_G2(self, tau, poly_degree):
         return [multiply(G2, int(tau**i)) for i in range(poly_degree)] # NOTE: G2
-    
-    def compute_C_public_powers_of_tau(self, tau, alpha, beta, upsilon, poly_degree):
-        constant = lambda u, v, w, x: ((beta * u(x)) + (alpha * v(x)) + w(x)) * (upsilon**-1)
-        u, v, w = self.U, self.V, self.W
-        return [multiply( G1, int(constant(u[i], v[i], w[i], (tau**i)))) for i in range(poly_degree)] # NOTE: G1
-    
-    def compute_C_private_powers_of_tau(self, tau, alpha, beta, delta, poly_degree):
-        constant = lambda u, v, w, x: ((beta * u(x)) + (alpha * v(x)) + w(x)) * (delta**-1)
-        u, v, w = self.U, self.V, self.W
-        return [multiply(G1, int(constant(u[i], v[i], w[i], (tau**i)))) for i in range(poly_degree)] # NOTE: G1
 
-    def compute_ht_powers_of_tau(self, t, tau, delta, poly_degree):
-        constant = lambda tau_power: tau_power * t(tau) * (delta**-1)
-        return [multiply(G1, int(constant(tau**i))) for i in range(poly_degree-2)] # NOTE: G1
+    def compute_powers_of_tau_ht(self, t, tau, delta, poly_degree):
+        # powers of tau for h(tau)t(tau) in C
+        t_at_tau = t(tau)
+        delta_inv = self.GF(1) / delta
+        out = [multiply(G1, int((tau**i) * t_at_tau)) for i in range(t.degree-1)] # NOTE: G1
+        return [multiply(e, int(delta_inv)) for e in out]
     
-    def secret_upsilon(self, upsilon):
-        return multiply(G2, int(upsilon))
-    
-    def secret_delta(self, delta):
-        return multiply(G1, int(delta)), multiply(G2, int(delta))
-    
-    def t_eval_G1_powers(self, t, tau, poly_degree):
-        # encrypt pre evaluated t at powers of tau
-        return [multiply(G1, int(t(tau) * (tau**i))) for i in range(poly_degree)]
+    def compute_pub_and_priv_powers_of_tau(self, tau, alpha, beta, delta, gamma, l):
+
+        # powers of tau for public and private inputs in C
+        beta_times_U = [beta * self.U[i] for i in range(len(self.U))]
+        alpha_times_V = [alpha * self.V[i] for i in range(len(self.V))]
         
-    
+        # powers of tau for C
+        C_poly = [beta_times_U[i] + alpha_times_V[i] + self.W[i] for i in range(len(self.W))]
+        C_poly_of_tau = [C_poly[i](tau) for i in range(len(C_poly))]
+        C_powers_of_tau_G1 = [multiply(G1, int(C_poly_of_tau[i])) for i in range(len(C_poly_of_tau))]
+
+        # powers of tau for public inputs in C
+        gamma_inv = self.GF(1) / gamma
+        pub_powers_of_tau_G1 = C_powers_of_tau_G1[:l+1]
+        pub_powers_of_tau_G1 = [multiply(e, int(gamma_inv)) for e in pub_powers_of_tau_G1]
+
+        # powers of tau for private inputs in C
+        delta_inv = self.GF(1) / delta
+        priv_powers_of_tau_G1 = C_powers_of_tau_G1[l+1:]
+        priv_powers_of_tau_G1 = [multiply(e, int(delta_inv)) for e in priv_powers_of_tau_G1]
+
+        return pub_powers_of_tau_G1, priv_powers_of_tau_G1
+
+
+
+
 
 if __name__ == "__main__":
 

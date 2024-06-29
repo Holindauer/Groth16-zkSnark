@@ -34,6 +34,8 @@ v2 = 4*x*x
 # witness vector
 w = np.array([1, out, x, y, v1inter, v1, v2])
 
+print("witness vector: ", w)
+
 
 # # ensure that the constraint is satisfied when represented as an r1cs
 result = O.dot(w) == np.multiply(L.dot(w),R.dot(w))
