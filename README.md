@@ -205,7 +205,7 @@ There exists a [Ring](https://en.wikipedia.org/wiki/Ring_(mathematics)) Homomorp
  $$
 
 
-The ring homomorphism here means that the is an information/structure preserving transformation from vectors to polynomials. Vector addition and multiplication is preserved with the interpolation in the form of polynomial addition and multiplication.
+The ring homomorphism here means that there is an information/structure preserving transformation from vectors to polynomials. Vector addition and multiplication is preserved within the interpolation in the form of polynomial addition and multiplication.
 
 ### R1CS to QAP Transformation Function
 
@@ -275,7 +275,7 @@ $$
 s = a = (a_1, ... , a_n), a_1 = 1, a{}_{i, i>1} \in \mathbb{F_p} 
 $$
 
-Note that the interpolation of each row of the column vector maps to the dimension of that row - 1. And all arithmatic operations are done in the finite field $\mathbb{F_p}$.
+Note that the interpolation of each row of the column vector maps to the dimension of that row - 1. And all arithmetic operations are done in the finite field $\mathbb{F_p}$.
 
 The following equations are all congruent to our original program:
 
@@ -299,9 +299,9 @@ The QAP representaiton is what enables us to achieve succinctly verifiable proof
 
 ### Balancing the QAP
 
-There is a catch to the above description of QAPs. Because we are multiplying $U \cdot s$ and $V \cdot s$, the degree of the resulting polynomial will not match that of $W \cdot s$. The integrity of the interpolation wrt to the R1CS will still hold, but something must be done to maintain the equality of the polynomial equation.
+There is a catch to the above description of QAPs. Because we are multiplying $U \cdot s$ and $V \cdot s$, the degree of the resulting polynomial will not match that of $W \cdot s$. The integrity of the interpolation wrt to the R1CS will still hold, but something must be done to maintain the equality of the polynomial equation. They must be the same polynomial.
 
-To illustrate this, consider the following setup for $U, V$
+To illustrate this, consider the following setup for $U, V, W, s$
 
 $$
 (W \cdot s) = x^2 + 3x + 1
@@ -321,7 +321,7 @@ $$
 
 In this situation, $W \cdot s$ will only be a degree of 2, breaking the equality on the polynomial side of things. We need to introduce another term into the right hand side of the equation to return the equality.
 
-First, lets consider our R1CS again. We wish to add a term without changing this representation. If we add the zero vector, the equation will still hold:
+First, lets consider our R1CS again. We wish to add a term without changing this representation. If we add the zero vector, the R1CS equation will still hold:
 
 $$ 
 Ls \circ Rs = Os + 0  
@@ -329,7 +329,7 @@ $$
 
 The $0$ term is known as a balancing term. If we interpolate the zero vector, nothing changes on the R1CS side. However because we can interpolate the polynomial in an infinite number of ways, we can make this polynomial match the degree of the other side of the equation.
 
-In our example, because we are interpolating the polynomials over x = {1, 2, 3}, we can construct a polynomial $h(x)t(x)$ where:
+In our example, because we are interpolating the polynomials over x = {1, 2, 3}, we can construct a polynomial $h(x)t(x)$ with roots $1,2,3$ by defining $t(x)$ as follows:
 
 $$
 t(x) = (x - 1)(x - 2)(x - 3)
@@ -351,7 +351,7 @@ $$
 
 It should be noted that $t(x)$ is a public polynomial. This means that in a ZKP, the prover cannot just make up some $h(x)$ term that will make the equation hold. The prover must derive $h(x)$ else the verifier will not be able to verify the proof. 
 
-Our new QAP definition is now as follows:
+Our refined QAP definition is now as follows:
 
 $$ 
 \sum_{i=0}^m a_iu_i(x) \sum_{i=0}^m a_iv_i(x) = \sum_{i=0}^m a_iw_i(x) + h(x)t(x)
@@ -359,7 +359,7 @@ $$
 
 # A Preliminary to Groth16
 
-The following description lays out the steps for a zero knowledge proof for the QAP. This is a half baked version of Groth16 that will be expanded on to improve upon its weaknesses. 
+The following description lays out the steps for a zero knowledge proof for the QAP. This is a half baked version of Groth16 that will be expanded upon to erase its weaknesses. 
 
 ### Trusted Setup
 
@@ -375,13 +375,13 @@ $$
 [\tau G_2], [\tau ^2G_2], [\tau ^3G_2],...[\tau ^nG_2]
 $$
 
-The will be used in an encrypted evaluation of the QAP.
+These are precomputed by the trusted setup for use in the encrypted evaluation of the QAP.
 
 ### Prover Steps
 
 The prover computes encrypted dot products $(U \cdot s)$, $(V \cdot s)$, $(W \cdot s)$, $h(x)$ with scalar multiplication of the encrypted powers of $\tau$ with the QAP matrix and witness polynomial coefficients. 
 
-Also note that in the below equations, brackets with a subscript, such as $[a]_c$ denote that the term within is a $G_c$ curve point.
+Note that in the below equations, brackets with a subscript, such as $[a]_c$ denote that the term within is a $G_c$ curve point.
 
 The encrypted evaluation of $(U \cdot s)(\tau)$ and $(V \cdot s)(\tau)$ results in curve points $[A]_1$ and $[B]_2$ respectively.
 
@@ -421,8 +421,8 @@ Next we must compute $h(x)t(x)$. Note that this is not an evaluation but an actu
 
 
 
-<!-- 
-$$
+
+<!-- $$
 t(x) = (x - 1)(x - 2)(x - 3)
 $$
 
@@ -435,7 +435,7 @@ ht(x) = h(x)t(x)
 $$
 
 $$
-[HT]_1 = h(x) = \sum_{i=0}^n ht_i[x^iG]_1
+[HT]_1 = [h(\tau)t(\tau)]_1 = \sum_{i=0}^n ht_i[x^iG]_1
 $$ -->
 
 
@@ -552,16 +552,17 @@ Note that although not explicitly stated, the powers of tau from the trusted set
   <img src="imgs/prover_steps.png" alt="Description of image">
 </p>
 
-<!-- $$
-[A]_1=  [\alpha]_1 + \sum_{i=0}^n a_i[u_i(\tau ^i)]_1 + r[\delta]_1
+<!-- 
+$$
+[A]_1=  [\alpha]_1 + \sum_{i=0}^n a_i[u_i(\tau)]_1 + r[\delta]_1
 $$
 
 $$
-[B]_2= [\beta]_2 + \sum_{i=0}^n a_i[v_i(\tau ^i)]_2 + s[\delta]_2
+[B]_2= [\beta]_2 + \sum_{i=0}^n a_i[v_i(\tau)]_2 + s[\delta]_2
 $$
 
 $$
-[B]_1= [\beta]_1 + \sum_{i=0}^n a_i [v_i(\tau^i)]_1 + s[\delta]_1
+[B]_1= [\beta]_1 + \sum_{i=0}^n a_i [v_i(\tau)]_1 + s[\delta]_1
 $$
 
 $$
@@ -570,17 +571,18 @@ $$
 
 $$
 proof = ([A]_1, [B]_2, [C]_1)
-$$ -->
-
+$$ 
+-->
 
 ## Verifier Steps 
 
-The verifier verifies the following equality holds. If it does, the proof is valid. Otherwise not.
+The verifier verifies the following equality holds. If it does, the proof is valid. Otherwise not. 
 
 <p align="center">
   <img src="imgs/verifier_steps.png" alt="Description of image">
 </p>
 
+Note that the public claim in the first term is evaluated by the prover in an encrypted manner, the combined with the rest of the encrypted witness.
 
 <!-- 
 $$
