@@ -18,7 +18,7 @@ Not only that, but the verification step is succinct. Meaning that the verifier 
 
 ### Example:
 
-[test_Groth16.py](test_Groth16.py) contains an example of how to use the python code in the [src](src) directory to generate a proog and verify it.
+[test_Groth16.py](test_Groth16.py) contains an example of how to use the python code in the [src](src) directory to generate a proof and verify it.
 ### src/
 
 [QAP.py](src/QAP.py) contains the polynomial constaint program. It is represented originally as an R1CS and transformed into a QAP for use in the Groth16 algorithm.
@@ -62,9 +62,11 @@ $$
 v2 = v1*x
 $$
 
+
 $$
-v3 = 4*x*x
+v3 = 4x*x
 $$
+
 
 $$
 out = v1 + v2 + y*y
@@ -377,31 +379,49 @@ The will be used in an encrypted evaluation of the QAP.
 
 ### Prover Steps
 
-The prover computes encrypted dot products $ (U \cdot s)$, $(V \cdot s)$, $(W \cdot s)$, $h(x)$ with scalar multiplication of the encrypted powers of $\tau$ with the QAP matrix and witness polynomial coefficients. 
+The prover computes encrypted dot products $(U \cdot s)$, $(V \cdot s)$, $(W \cdot s)$, $h(x)$ with scalar multiplication of the encrypted powers of $\tau$ with the QAP matrix and witness polynomial coefficients. 
 
 Also note that in the below equations, brackets with a subscript, such as $[a]_c$ denote that the term within is a $G_c$ curve point.
 
 The encrypted evaluation of $(U \cdot s)(\tau)$ and $(V \cdot s)(\tau)$ results in curve points $[A]_1$ and $[B]_2$ respectively.
 
-$$
-[A]_1= (U \cdot s)(\tau) =  \sum_{i=0}^n a_iu_i[\tau ^iG]_1
+
+<p align="center">
+  <img src="imgs/old_A_B.png" alt="Description of image">
+</p>
+
+
+<!-- $$
+[A]_1= (U \cdot s)(\tau) =  \sum_{i=0}^n a_i u_i [\tau ^iG]_1
 $$
 
 $$
 [B]_2= (V \cdot s)(\tau) =  \sum_{i=0}^n a_iv_i[\tau ^iG]_2
-$$
+$$ -->
 
 
 The encrypted evaluation of $(W \cdot s)(\tau) + h(\tau)t(\tau)$ results in $[C]_1$ with a bit of aditional work.
 
 We start by computing $[C']_1$
 
-$$
+<p align="center">
+  <img src="imgs/old_C_prime.png" alt="Description of image">
+</p>
+
+
+<!-- $$
 [C']_1= (W \cdot s)(\tau) =  \sum_{i=0}^n a_iw_i[\tau ^iG]_1
-$$
+$$ -->
 
 Next we must compute $h(x)t(x)$. Note that this is not an evaluation but an actual expansion of the polynomial. 
 
+<p align="center">
+  <img src="imgs/ht_derivation.png" alt="Description of image">
+</p>
+
+
+
+<!-- 
 $$
 t(x) = (x - 1)(x - 2)(x - 3)
 $$
@@ -416,14 +436,19 @@ $$
 
 $$
 [HT]_1 = h(x) = \sum_{i=0}^n ht_i[x^iG]_1
-$$
+$$ -->
 
 
 $[C]_1$ is then computed by:
 
+<p align="center">
+  <img src="imgs/old_C.png" alt="Description of image">
+</p>
+
+<!-- 
 $$
 [C]_1 = [C']_1 + [HT]_1
-$$
+$$ -->
 
 ### Verifier Steps
 
@@ -448,62 +473,67 @@ The trusted setup starts by generating random field elements $(\tau$, $\alpha$, 
 
 Note that $l$ is the index in the witness where the public and private inputs diverge.
 
+<p align="center">
+  <img src="imgs/trusted_setup_steps.png" alt="Description of image">
+</p>
 
-#### Powers of $\tau$ for $[A]_1$:
+
+<!-- 
+### Powers of $\tau$ for $[A]_1$:
 
 $$
 \{\tau^i [G_1]_1\}{}_{i=0}^{ i=n-1 }
 $$
 
-#### Random Shift for $[A]_1$
+### Random Shift for $[A]_1$
 
 $$
 [\alpha G_1]_1
 $$
 
 
-#### Powers of $\tau$ for $[B]_2$:
+### Powers of $\tau$ for $[B]_2$:
 
 $$
 \{\tau^i [G_2]_2\}{}_{i=0}^{ i=n-1 }
 $$
 
-#### Random Shift for $[B]_2$
+### Random Shift for $[B]_2$
 
 $$
 [\beta G_2]_2
 $$
 
 
-#### Powers of $\tau$ for public inputs:
+### Powers of $\tau$ for public inputs:
 
 $$
 \{ \gamma ^{-1} (\beta u_i(\tau^i) + \alpha v_i(\tau^i) + w_i(\tau^i)) [G_1]_1 \}_{i=0}^l
 $$
 
-#### Powers of $\tau$ for private inputs:
+### Powers of $\tau$ for private inputs:
 
 $$
 \{ \delta ^{-1} (\beta u_i(\tau^i) + \alpha v_i(\tau^i) + w_i(\tau^i)) [G_1]_1 \}_{i=l+1}^{n-1}
 $$
 
-#### Powers of $\tau$ for $h(\tau)t(\tau)$:
+### Powers of $\tau$ for $h(\tau)t(\tau)$:
 
 $$
 \{ \delta ^{-1} \tau ^i t(\tau) [G_1]_1\}_{i=0} ^{n-2} 
 $$
 
-#### $\gamma$ and $\delta$:
+### $\gamma$ and $\delta$:
 
 $$
 [\delta G_2]_2, [\gamma G_2]_2
 $$
 
-#### Additional needed terms:
+### Additional needed terms:
 
 $$
 [\beta G_1]_1, [\delta G_1]_1
-$$
+$$ -->
 
 
 
@@ -518,7 +548,11 @@ Then the below proof is computed.
 Note that although not explicitly stated, the powers of tau from the trusted setup are used below in an encrypted evaluation of each polynomials:
 
 
-$$
+<p align="center">
+  <img src="imgs/prover_steps.png" alt="Description of image">
+</p>
+
+<!-- $$
 [A]_1=  [\alpha]_1 + \sum_{i=0}^n a_i[u_i(\tau ^i)]_1 + r[\delta]_1
 $$
 
@@ -527,7 +561,7 @@ $$
 $$
 
 $$
-[B]_1= [\beta]_1 + \sum_{i=0}^n a_i[v_i(\tau ^i)]_1 + s[\delta]_1
+[B]_1= [\beta]_1 + \sum_{i=0}^n a_i [v_i(\tau^i)]_1 + s[\delta]_1
 $$
 
 $$
@@ -536,19 +570,23 @@ $$
 
 $$
 proof = ([A]_1, [B]_2, [C]_1)
-$$
+$$ -->
 
 
 ## Verifier Steps 
 
 The verifier verifies the following equality holds. If it does, the proof is valid. Otherwise not.
 
+<p align="center">
+  <img src="imgs/verifier_steps.png" alt="Description of image">
+</p>
 
+
+<!-- 
 $$
 e([A]_1, [B]_2) = e([\alpha]_1, [\beta]_2) + e(\sum_{i=0}^l a_i[\beta u_i(\tau) + \alpha v_i(\tau) + w_i(\tau)]_1, [\gamma]_2) + e([C]_1, [\delta]_2)
-
 $$
-
+ -->
 
 # Sources
 
