@@ -1,9 +1,8 @@
 import random
 import numpy as np
-from py_ecc.bn128 import G1, G2, Z1, add, multiply
+from py_ecc.bn128 import G1, G2, multiply
 from functools import reduce
 import galois
-from QAP import QAP
 
 class TrustedSetup: 
     def __init__(self, U_poly, V_poly, W_poly, t, GF, curve_order): 
@@ -97,23 +96,3 @@ class TrustedSetup:
         return pub_powers_of_tau_G1, priv_powers_of_tau_G1
 
 
-
-
-
-if __name__ == "__main__":
-
-    qap = QAP()
-
-    # convert R1CS to QAP
-    U_poly, V_poly, W_poly, t = qap.R1CS_to_QAP()
-
-    # get galois field 
-    GF = qap.GF
-    curve_order = qap.curve_order
-
-    # trusted setup
-    trusted_setup = TrustedSetup(U_poly, V_poly, W_poly, t, GF, curve_order)
-    
-    setup = trusted_setup.setup(degree=4)
-    for key, val in setup.items():
-        print("\n", key, val)

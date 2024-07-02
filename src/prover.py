@@ -1,9 +1,7 @@
 import numpy as np
-from py_ecc.bn128 import G1, G2, multiply, add, Z1, pairing, neg, final_exponentiate, FQ12
+from py_ecc.bn128 import multiply, add, Z1, neg
 import galois
 from functools import reduce
-from trusted_setup import TrustedSetup
-from QAP import QAP
 from typing import Dict
 import random
  
@@ -100,7 +98,7 @@ class Prover:
         return reduce(sum_, map(mul_, polys, witness))
 
     def compute_t(self, degree):  
-        # t = (x - 1)(x - 2)(x - 3)(x - 4)
+        # t(x) = (x - 1)(x - 2)(x - 3)(x - 4)
         x_min_i = [galois.Poly([1, self.curve_order - i], field = self.GF) for i in range(1, 5)]
         return reduce(lambda x, y: x * y, x_min_i) # NOTE: poly expansion
 

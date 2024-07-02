@@ -21,8 +21,8 @@ class Verifier:
         c = pairing(self.gamma_G2, self.elliptic_dot(self.pub_powers_of_tau_G1, public_input))
         d = pairing(self.delta_G2, C)
 
+        # this is how additions are done w/ G12 points
         result = final_exponentiate(a * b * c * d) == FQ12.one()
-
         print("Proof is Valid: ", result)
 
         return result

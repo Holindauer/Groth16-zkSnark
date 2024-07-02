@@ -1,14 +1,18 @@
-from QAP import QAP
-from trusted_setup import TrustedSetup
-from prover import Prover
-from verifier import Verifier
+
+import os
+
+print(os.getcwd())
+
+from src.QAP import QAP
+from src.trusted_setup import TrustedSetup
+from src.prover import Prover
+from src.verifier import Verifier
+
 
 if __name__ == "__main__":
     
-    # QAP for 40 = x^3 - 4x^2 + 6x + y^2
+    # R1CS to QAP for 40 = x^3 - 4x^2 + 6x + y^2
     qap = QAP()
-
-    # convert R1CS to QAP
     U_poly, V_poly, W_poly, t = qap.R1CS_to_QAP()
 
     # get galois field 

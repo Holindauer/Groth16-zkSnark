@@ -58,15 +58,3 @@ class QAP:
         x_min_i = [galois.Poly([1, self.curve_order - i], field = self.GF) for i in range(1, 5)]
         return reduce(lambda x, y: x * y, x_min_i) # NOTE: poly expansion
     
-
-
-if __name__ == "__main__":
-
-    qap = QAP()
-
-    # convert R1CS to QAP
-    U_poly, V_poly, W_poly, t = qap.R1CS_to_QAP()
-
-    # get galois field 
-    GF = qap.GF
-    curve_order = qap.curve_order
