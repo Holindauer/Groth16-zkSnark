@@ -35,7 +35,7 @@ Not only that, but the verification step is succinct. Meaning that the verifier 
 
 # How Groth16 Snarks Work...
 
-Below I am going to breifly explain how Groth16 snarks work. The below explanation assumes a basic understanding of elliptic curve cryptography, modular arithmatic, and abstract algebra.
+Below I am going to breifly explain how Groth16 snarks work. The below explanation assumes a basic understanding of elliptic curve cryptography, modular arithmetic, and abstract algebra.
 It is a super condensed version of this already [super condensed book](https://www.rareskills.io/zk-book) on snarks.
 
 
